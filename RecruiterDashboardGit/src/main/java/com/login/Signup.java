@@ -26,8 +26,8 @@ public class Signup extends HttpServlet{
 	String pass;
 	String email;
 	String phone;
-	int otp;
-	int userid;
+	String otp;
+	String userid;
 	
 	boolean tableExists;
 	
@@ -62,19 +62,19 @@ public class Signup extends HttpServlet{
 			phone = req.getParameter("phone");
 			pass = Do.encrypt(req.getParameter("pass"));
 			
-			otp = Do.generateOtp();
-			userid = Do.generateUserId();
+			otp = Do.generateOtp(mysql);
+			userid = Do.generateUserId(mysql);
 			
 			runDB(user,email,phone,mysql);
 			
 			if(!mysql.duplicateEntry(phone,email)) {
 				
-				req=Do.setAttribute(email, comp, user, pass, phone, Integer.toString(userid), null, req);
-				Do.sendMail("otp",Integer.toString(otp),email,req,resp,"emailOTP.jsp","signup.jsp");
+				req=Do.setAttribute(email, comp, user, pass, phone, userid, null, req);
+				Do.sendMail("otp",otp,email,req,resp,"emailOTP.jsp","signup.jsp",mysql);
 				
 			} else if(mysql.duplicateEntry(phone,email)) {
 				System.out.println("Username or phone-number already registered");
-				Do.showAlert(req,resp,"signup.jsp","duplicate");
+				Do.showAlert(req,resp,"signup.jsp","duplicate",mysql);
 			}
 			
 			//destroy();
@@ -83,7 +83,7 @@ public class Signup extends HttpServlet{
 			e.printStackTrace();
 			System.out.println("an error occured");
 			mysql.log( e.getClass().getName(), e.getMessage()+Do.getMethodName(e.getStackTrace()));
-			Do.showAlert(req,resp,"signup.jsp","error");
+			Do.showAlert(req,resp,"signup.jsp","error",mysql);
 		}
 	}
 
@@ -101,7 +101,7 @@ public class Signup extends HttpServlet{
 		}
 		
 		if(!mysql.duplicateEntry(phone,email)) {
-			mysql.setOtp(userid,otp);
+			mysql.logOtp(userid,otp);
 		}
 	}
 	

@@ -12,7 +12,7 @@ package com.login;
 	final public static String MySQL_User = "root";
 	final public static String MySQL_Pass = "";
 	
-	final public static String Rayzorpay_Key_ID = "329564772097-sk99odlsh7qfb3lusu8tc2vvs2ohp0sv.apps.googleusercontent.com";
-    final public static String Rayzorpay_Client_Secret = "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";
+	final public static String Rayzorpay_Key_ID = "rzp_test_c4onWoAisgIHq8";
+    final public static String Rayzorpay_Client_Secret = "iQiQOIArueIaqOuOIkM1GRcB";
 	
 }

@@ -11,9 +11,7 @@ import javax.servlet.http.HttpServletResponse;
 
 import org.json.JSONObject;
 
-import com.razorpay.Order;
-import com.razorpay.RazorpayClient;
-import com.razorpay.Utils;
+import com.razorpay.*;
 
 /**
  * Servlet implementation class OrderCreationDemo
@@ -62,7 +60,7 @@ public class Razorpay extends HttpServlet {
             System.out.println(orderId);
             request.setAttribute("orderId", orderId);
             request.setAttribute("amt", amt);
-            Do.showAlert(request, response, "payment.jsp", null);
+            Do.showAlert(request, response, "payment.jsp", null,mysql);
             
 			} catch (Exception e) {
 			  // Handle Exception

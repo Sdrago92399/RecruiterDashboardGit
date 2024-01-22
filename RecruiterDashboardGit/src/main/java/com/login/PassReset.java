@@ -19,8 +19,8 @@ public class PassReset extends HttpServlet {
 	String newpass;
 	String chkuserid;
 	String chkotp;
-	int otp;
-	int userid;
+	String otp;
+	String userid;
 	
 	boolean tableExists;
 
@@ -44,13 +44,13 @@ public class PassReset extends HttpServlet {
     		email = request.getParameter("email");
     		
     		alert = runDBget(chkuserid,newpass,email);
-    		Do.showAlert(request, response, "login.jsp", alert);
+    		Do.showAlert(request, response, "login.jsp", alert,mysql);
     		
         } catch (Exception e) {
         	e.printStackTrace();
 			System.out.println("an error occured");
 			mysql.log(e.getClass().getName(), e.getMessage()+Do.getMethodName(e.getStackTrace()));
-			Do.showAlert(request,response,"login.jsp","error");
+			Do.showAlert(request,response,"login.jsp","error",mysql);
         }
         
     }
@@ -60,24 +60,24 @@ public class PassReset extends HttpServlet {
         
     	try {
     		email = request.getParameter("email");
-    		userid=Do.generateUserId();
-    		otp=0;
+    		userid=Do.generateUserId(mysql);
+    		otp="000000";
     		
     		runDBpost(userid,otp);
     		
-    		Do.sendMail("pass",Integer.toString(userid),email,request,response,"login.jsp","passReset.jsp");
+    		Do.sendMail("pass",userid,email,request,response,"login.jsp","passReset.jsp",mysql);
     		
         } catch (Exception e) {
         	e.printStackTrace();
 			System.out.println("an error occured");
 			mysql.log(e.getClass().getName(), e.getMessage()+Do.getMethodName(e.getStackTrace()));
-			Do.showAlert(request,response,"login.jsp","error");
+			Do.showAlert(request,response,"login.jsp","error",mysql);
         }
         
     }
     
     
-	private void runDBpost(int userid, int otp) throws SQLException {
+	private void runDBpost(String userid, String otp) throws SQLException {
 		// TODO Auto-generated method stub
 		
 		if (mysql.tableExists()) {
@@ -87,7 +87,7 @@ public class PassReset extends HttpServlet {
 			System.out.println("db doesn't exists");
 			mysql.createTable();
 		}
-		mysql.setOtp(userid,otp);
+		mysql.logOtp(userid,otp);
 	}
 	
 	
@@ -105,7 +105,7 @@ public class PassReset extends HttpServlet {
 			mysql.createTable();
 		}
 		
-		chkotp = mysql.getOtp(Integer.parseInt(chkuserid));
+		chkotp = mysql.fetchOtp(chkuserid);
 		
 		if (chkotp.equals("0")) {
 			mysql.changePassword(email, newpass);

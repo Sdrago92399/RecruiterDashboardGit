@@ -70,14 +70,14 @@ public class Login extends HttpServlet{
 //				Cookie c = new Cookie("user", user);
 //	            resp.addCookie(c);
 	            
-	            Do.showAlert(req,resp,"loginInit",null);
+	            Do.showAlert(req,resp,"loginInit",null,mysql);
 				
 			} else if(reqIddb == null) {
 				System.out.println("Username doesnt exist");
-				Do.showAlert(req,resp,"login.jsp","notExist");
+				Do.showAlert(req,resp,"login.jsp","notExist",mysql);
 			} else if((input.equals(reqIddb)|input.equals(maildb))&!(pass.equals(passdb))) {
 				System.out.println("Login Denied");
-				Do.showAlert(req,resp,"login.jsp","notLogin");
+				Do.showAlert(req,resp,"login.jsp","notLogin",mysql);
 			}
 			
 			//destroy();
@@ -86,7 +86,7 @@ public class Login extends HttpServlet{
 			e.printStackTrace();
 			System.out.println("an error occured");
 			mysql.log(e.getClass().getName(), e.getMessage()+Do.getMethodName(e.getStackTrace()));
-			Do.showAlert(req,resp,"login.jsp","error");
+			Do.showAlert(req,resp,"login.jsp","error",mysql);
 		}
 	}
 
@@ -98,7 +98,7 @@ public class Login extends HttpServlet{
 		
 		if (tableExists) {
 			System.out.println("db already exists");
-			rst = mysql.fetchData(user);
+			rst = mysql.fetchData(mysql.getReqId(user));
 			while(rst.next()) {
 				reqIddb = rst.getString("reqId");
 				passdb = Do.decrypt(rst.getString("pass"));

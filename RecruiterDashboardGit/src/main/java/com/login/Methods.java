@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
+import java.sql.SQLException;
 import java.util.Random;
 
 import javax.crypto.BadPaddingException;
@@ -24,8 +25,9 @@ public class Methods {
 	Mail sendMail = new Mail();
 	
 	RequestDispatcher rd = null;
+	Random generator = new Random();
 	
-	String ivRaw = "FFFFFFFFFFFFFFFF";
+	String ivRaw = "FFFFFFFFFFFFFFFF", returnThis="";
 	IvParameterSpec iv = new IvParameterSpec(ivRaw.getBytes());
 	String keyBytes = "3da770b31f80efade1d4dbeefcb2d155";
 	boolean sentSuccess = false;
@@ -90,7 +92,7 @@ public class Methods {
 	}
     
 	
-	void showAlert(HttpServletRequest req, HttpServletResponse resp, String page, String alert) {
+	void showAlert(HttpServletRequest req, HttpServletResponse resp, String page, String alert, Jdbc mysql) {
 		// TODO Auto-generated method stub
 		try {
 			rd = req.getRequestDispatcher(page);
@@ -99,25 +101,12 @@ public class Methods {
 		} catch (ServletException | IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
-			Jdbc mysql = new Jdbc();
 			mysql.log(e.getClass().getName(), e.getMessage()+getMethodName(e.getStackTrace()));
 		}
 	}
-	
-	
-	int generateOtp() {
-		// TODO Auto-generated method stub
-		return new Random().nextInt((999999 - 100000) + 1) + 100000;
-	}
 
 
-	int generateUserId() {
-		// TODO Auto-generated method stub
-		return new Random().nextInt((999999 - 100000) + 1) + 100000;
-	}
-
-
-	void sendMail(String mailType, String valueToSend, String sendTo, HttpServletRequest req, HttpServletResponse resp, String onSuccess, String onFailure) throws ServletException, IOException {
+	void sendMail(String mailType, String valueToSend, String sendTo, HttpServletRequest req, HttpServletResponse resp, String onSuccess, String onFailure, Jdbc mysql) throws ServletException, IOException {
 		// TODO Auto-generated method stub
 		
 		switch(mailType) {
@@ -129,20 +118,93 @@ public class Methods {
 				break;
 		}
 		if(sentSuccess) {
-			showAlert(req,resp,onSuccess,"mail");
+			showAlert(req,resp,onSuccess,"mail",mysql);
 			System.out.println("Mail sent");
 			
 		} else if(!sentSuccess) {
-			showAlert(req,resp,onFailure,"notMail");
+			showAlert(req,resp,onFailure,"notMail",mysql);
 			System.out.println("Coudn't send mail");
 		}
 		
 	}
-
-
-	public String generateReqId() {
+	
+	
+	String generateOtp(Jdbc mysql) throws SQLException {
 		// TODO Auto-generated method stub
-		return "ED"+Integer.toString(new Random().nextInt((99999999 - 10000000) + 1) + 10000000);
+		returnThis = Integer.toString(generator.nextInt((999999 - 100000) + 1) + 100000);
+		boolean isDuplicateId = mysql.isDuplicateId(returnThis,"otp_table","otp");
+		
+		if(isDuplicateId) {
+			System.out.println("Generatng new one");
+			return generateOtp(mysql);
+		} else if(!isDuplicateId) {
+			return returnThis;
+		} else {
+			return null;
+		}
+	}
+
+
+	String generateUserId(Jdbc mysql) throws SQLException {
+		// TODO Auto-generated method stub
+		returnThis = Integer.toString(generator.nextInt((999999 - 100000) + 1) + 100000);
+		boolean isDuplicateId = mysql.isDuplicateId(returnThis,"otp_table","user_id");
+		
+		if(isDuplicateId) {
+			System.out.println("Generatng new one");
+			return generateUserId(mysql);
+		} else if(!isDuplicateId) {
+			return returnThis;
+		} else {
+			return null;
+		}
+	}
+
+
+	public String generateReqId(Jdbc mysql) throws SQLException {
+		// TODO Auto-generated method stub
+		returnThis = "ED"+Integer.toString(generator.nextInt((99999999 - 10000000) + 1) + 10000000);
+		
+		boolean isDuplicateId = mysql.isDuplicateId(returnThis,"db","reqId");
+		
+		if(isDuplicateId) {
+			System.out.println("Generatng new one");
+			return generateReqId(mysql);
+		} else if(!isDuplicateId) {
+			return returnThis;
+		} else {
+			return null;
+		}
+	}
+	
+	
+	public String generateChatId(Jdbc mysql) throws SQLException {
+		// TODO Auto-generated method stub
+		int noOfChars = 5;
+		for (int i = 0; i < noOfChars; i++) {
+			returnThis += (char) (generator.nextInt(26) + 65);
+		}
+		
+		returnThis+=Integer.toString(generator.nextInt(10 * (int) Math.pow(10,(10 - noOfChars - 1))) + (int) Math.pow(10,(10 - noOfChars - 1)));
+		
+		boolean isDuplicateId = mysql.isDuplicateId(returnThis,"master_chats","chatId");
+		
+		if(isDuplicateId) {
+			System.out.println("Generatng new one");
+			return generateChatId(mysql);
+		} else if(!isDuplicateId) {
+			return returnThis;
+		} else {
+			return null;
+		}
+	}
+
+
+	public void showDahboardPage(HttpServletRequest req, HttpServletResponse resp, String page) throws ServletException, IOException {
+		// TODO Auto-generated method stub
+		rd = req.getRequestDispatcher("dashboard.jsp");
+		req.setAttribute("alert", page);
+		rd.forward(req, resp);
 	}
 	
 	

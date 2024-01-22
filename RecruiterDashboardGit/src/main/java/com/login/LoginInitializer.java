@@ -27,6 +27,7 @@ public class LoginInitializer extends HttpServlet{
 	HashMap<String,ResultSet> dataBank = new HashMap<String,ResultSet>();
 	ResultSet userResultset = null;
 	ResultSet walletResultset = null;
+	ResultSet chatResultset = null;
 
 	String user;
 	String mail;
@@ -57,6 +58,7 @@ public class LoginInitializer extends HttpServlet{
 			
 			dataBank = runDB(req.getParameter("user"));
 			
+			//profile block
 			userResultset=dataBank.get("user");
 			while(userResultset.next()) {
 				user = userResultset.getString("user");
@@ -66,6 +68,7 @@ public class LoginInitializer extends HttpServlet{
 				reqId = userResultset.getString("reqId");
 			}
 			
+			//trnsc block
 			String table="";
 			walletResultset=dataBank.get("wallet");
 			while(walletResultset.next()) {
@@ -88,15 +91,27 @@ public class LoginInitializer extends HttpServlet{
 				table+=(trnsc>0?credit.replace("XXXXX", Float.toString(trnsc)):debit.replace("XXXXX", Float.toString(-trnsc)));
 			}
 			
+			//chat block
+			chatResultset=dataBank.get("chat");
+			while(chatResultset.next()) {
+				String chatId = chatResultset.getString("chatId");
+				String message = chatResultset.getString("message");
+				Timestamp date = chatResultset.getTimestamp("time");
+				String isClosed = chatResultset.getBoolean("closed")?"Closed":"Open";
+				String prevChatId = chatResultset.getString("pointer");
+			}
+			
+			//TODO; add display function
+			
 			req=Do.setAttribute(mail, comp, user, null, phone, reqId, table, req);
-			Do.showAlert(req, resp, "dashboard.jsp", "profile");
+			Do.showDahboardPage(req, resp, "profile");
 			
 		} catch (Exception e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 			System.out.println("an error occured");
 			mysql.log(e.getClass().getName(), e.getMessage()+Do.getMethodName(e.getStackTrace()));
-			Do.showAlert(req,resp,"login.jsp","error");
+			Do.showAlert(req,resp,"login.jsp","error",mysql);
 		}
 	}
 
@@ -109,16 +124,22 @@ public class LoginInitializer extends HttpServlet{
 		if (tableExists) {
 			System.out.println("db already exists");
 			
-			userResultset = mysql.fetchData(loginInput);
-			walletResultset = mysql.fetchTransaction(mysql.getReqId(loginInput));
-			dataBank.put("user", userResultset);
-			dataBank.put("wallet", walletResultset);
+			reqId = mysql.getReqId(loginInput);
+			
+			userResultset = mysql.fetchData(reqId);
+			walletResultset = mysql.fetchTransaction(reqId);
+			chatResultset = mysql.fetchMessage(reqId);
 			
 		}
 		else if(!tableExists) {
 			System.out.println("db doesn't exists");
 			mysql.createTable();
 		}
+		
+		dataBank.put("user", userResultset);
+		dataBank.put("wallet", walletResultset);
+		dataBank.put("chat", chatResultset);
+		
 		return dataBank;
 	}
 	

@@ -1,5 +1,6 @@
 package com.login;
 
+import java.lang.reflect.InvocationTargetException;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
@@ -8,13 +9,14 @@ import java.sql.SQLException;
 import java.sql.SQLSyntaxErrorException;
 import java.sql.Statement;
 import java.sql.Timestamp;
+import java.util.ArrayList;
 
 public class Jdbc {
 	
 	Methods Do = new Methods();
 	
 	private ResultSet resultset = null;
-	private int tableResponse, walletResponse, otpResponse, backupResponse, logResponse;
+	private int tablesCreated, tablesExist;
 	private PreparedStatement insertStatement = null, selectStatement = null, deleteStatement = null, updateStatement = null;
 	
 	Connection connection = null;
@@ -25,7 +27,7 @@ public class Jdbc {
 	final String dbuser = Globals.MySQL_User;
 	final String dbpass = Globals.MySQL_Pass;
 	
-	private String table, wallet, otp, backup, log, insertQuery, selectQuery, deleteQuery, updateQuery, error = "";
+	private String table, wallet, chat, otp, backup, log, insertQuery, selectQuery, deleteQuery, updateQuery, error = "";
 	private float trnsc=0, bal=0, tempBal;
 	private Boolean returnThis=true;
 	
@@ -57,6 +59,11 @@ public class Jdbc {
 				+ "WHERE \r\n"
 				+ "	table_schema = '" + dbname +  "' \r\n"
 				+ "	AND table_name = 'master_wallet'";
+		chat = "SELECT COUNT(*) AS table_count \r\n"
+				+ "FROM information_schema.tables \r\n"
+				+ "WHERE \r\n"
+				+ "	table_schema = '" + dbname +  "' \r\n"
+				+ "	AND table_name = 'master_chats'";
 		otp = "SELECT COUNT(*) AS table_count \r\n"
 				+ "FROM information_schema.tables \r\n"
 				+ "WHERE \r\n"
@@ -72,28 +79,29 @@ public class Jdbc {
 				+ "WHERE \r\n"
 				+ "	table_schema = '" + dbname +  "' \r\n"
 				+ "	AND table_name = 'log'\r\n";
-
-	    resultset = statement.executeQuery(table);
-	    resultset.next();
-	    tableResponse=resultset.getInt(1);
-	    
-	    resultset = statement.executeQuery(wallet);
-	    resultset.next();
-	    walletResponse=resultset.getInt(1);
-	    
-	    resultset = statement.executeQuery(otp);
-	    resultset.next();
-	    otpResponse=resultset.getInt(1);
-	    
-	    resultset = statement.executeQuery(backup);
-	    resultset.next();
-	    backupResponse=resultset.getInt(1);
-	    
-	    resultset = statement.executeQuery(log);
-	    resultset.next();
-	    logResponse=resultset.getInt(1);
-	    
-	    return (tableResponse != 0 & walletResponse != 0 & otpResponse != 0 & backupResponse != 0 & logResponse != 0);
+		
+		ArrayList<String> querySet = new ArrayList<String>();
+		querySet.add(table);
+		querySet.add(wallet);
+		querySet.add(chat);
+		querySet.add(otp);
+		querySet.add(backup);
+		querySet.add(log);
+		
+		tablesExist=0;
+		for(String i : querySet) {
+			resultset = statement.executeQuery(i);
+		    resultset.next();
+		    tablesExist+=resultset.getInt(1);
+		}
+		
+		
+		if(tablesExist==querySet.size()) {
+			return true;
+		} else {
+			return false;
+		}
+	
 	}
 
 
@@ -121,7 +129,7 @@ public class Jdbc {
 	}
 
 
-	void addData(String reqId, String user, String comp, String pass, String mail, String phone) throws SQLException {
+	void logData(String reqId, String user, String comp, String pass, String mail, String phone) throws SQLException, IllegalAccessException, IllegalArgumentException, InvocationTargetException, NoSuchMethodException, SecurityException {
 		// TODO Auto-generated method stub
 		insertQuery ="insert into db(reqId,user,comp,pass,mail,phone) values (?,?,?,?,?,?)";
 		insertStatement=connection.prepareStatement(insertQuery);
@@ -132,28 +140,11 @@ public class Jdbc {
 		insertStatement.setString(5, mail);
 		insertStatement.setString(6, phone);
 		
-		try {
-			insertStatement.executeUpdate();
-			System.out.println("added succesfully");
-		} catch (SQLException e) {
-			error = e.getMessage();
-			System.out.println(error); 
-			if(error.contains("Duplicate entry '"+reqId+"' for key 'PRIMARY'")) {
-				System.out.println("Duplicate reqId, generating new one...");
-				addData(Do.generateReqId(),user,comp,pass,mail,phone);
-			} else {
-				System.out.println("Couldn't add data");
-				e.printStackTrace();
-				log(Integer.toString(e.getErrorCode()),e.getMessage());
-//				mysql.backup(Integer.toString(e.getErrorCode()));
-//				mysql.delTable();
-//				mysql.createTable();
-			}
-		}
+		insertStatement.executeUpdate();
+		System.out.println("data added successfully");
 	}
-	
-	
-	
+
+
 	void createTable() throws SQLException {
 		// TODO Auto-generated method stub
 		//create a query
@@ -176,12 +167,22 @@ public class Jdbc {
 				+ "	reqId char(10) NOT NULL\r\n"
 				+ ")";
 		
+		chat="CREATE TABLE master_chats (\r\n"
+				+ "	chatId char(10) NOT NULL PRIMARY KEY,\r\n"
+				+ "	reqId char(10) NOT NULL,\r\n"
+				+ "	time TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, \r\n"
+				+ "	message TEXT NOT NULL,\r\n"
+				+ "	pointer char(10) NOT NULL,\r\n"
+				+ "	closed BIT(1) NOT NULL\r\n"
+				+ ")";
+		
 		otp="CREATE TABLE otp_table (\r\n"
-				+ "    user_id INT,\r\n"
-				+ "    otp INT(6) NOT NULL,\r\n"
+				+ "    user_id CHAR(6),\r\n"
+				+ "    otp CHAR(6) NOT NULL,\r\n"
 				+ "    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,\r\n"
 				+ "    PRIMARY KEY (user_id, otp)\r\n"
 				+ ")";
+		
 		backup="CREATE TABLE db_backup (\r\n"
 				+ "	time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,\r\n"
 				+ "	log varchar(200),\r\n"
@@ -193,6 +194,7 @@ public class Jdbc {
 				+ "	phone char(10),\r\n"
 				+ "	PRIMARY KEY (time, log, reqId)\r\n"
 				+ ")";
+		
 		log="CREATE TABLE log (\r\n"
 				+ "    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,\r\n"
 				+ "    logid varchar(200) NOT NULL,\r\n"
@@ -200,52 +202,29 @@ public class Jdbc {
 				+ "    PRIMARY KEY (created_at, logid)\r\n"
 				+ ")";
 		
-		try {
-			tableResponse = statement.executeUpdate(table);
-			walletResponse = statement.executeUpdate(wallet);
-			otpResponse = statement.executeUpdate(otp);
-			backupResponse = statement.executeUpdate(backup);
-			logResponse = statement.executeUpdate(log);
-		} catch(SQLSyntaxErrorException e) {
-			error = e.getMessage();
-			System.out.println(error); 
-			if(error.equals("Table 'db' already exists")) {
-				try {
-					walletResponse = statement.executeUpdate(wallet);
-					otpResponse = statement.executeUpdate(otp);
-					backupResponse = statement.executeUpdate(backup);
-					logResponse = statement.executeUpdate(log);
-				} catch(SQLSyntaxErrorException e1) {
-					error = e1.getMessage();
-					System.out.println(error); 
-					if(error.equals("Table 'master_wallet' already exists")) {
-						try {
-							otpResponse = statement.executeUpdate(otp);
-							backupResponse = statement.executeUpdate(backup);
-							logResponse = statement.executeUpdate(log);
-						} catch(SQLSyntaxErrorException e2) {
-							error = e2.getMessage();
-							System.out.println(error);
-							if(error.equals("Table 'otp_table' already exists")) {
-								try {
-									backupResponse = statement.executeUpdate(backup);
-									logResponse = statement.executeUpdate(log);
-								} catch(SQLSyntaxErrorException e3) {
-									error = e3.getMessage();
-									System.out.println(error);
-									if(error.equals("Table 'db_backup' already exists")) {
-										logResponse = statement.executeUpdate(log);
-									}
-								}
-							}
-						}
-					}
-				}
+		ArrayList<String> querySet = new ArrayList<String>();
+		querySet.add(table);
+		querySet.add(wallet);
+		querySet.add(chat);
+		querySet.add(otp);
+		querySet.add(backup);
+		querySet.add(log);
+		
+		tablesCreated=0;
+		for(String i : querySet) {
+			try {
+				statement.executeUpdate(i);
+				tablesCreated++;
+			} catch(SQLSyntaxErrorException e) {
+				error = e.getMessage();
+				System.out.println(error);
 			}
 		}
-		if(tableResponse==0 & walletResponse==0 & otpResponse==0 & backupResponse==0 & logResponse==0) {
+		
+		
+		if(tablesCreated==querySet.size()) {
 			System.out.println("database initialized successfully...");
-		} else if(tableResponse==0 | walletResponse==0 | otpResponse==0 | backupResponse==0 | logResponse==0) {
+		} else if(tablesCreated>0 & tablesCreated<querySet.size()) {
 			System.out.println("partially initialized...");
 		} else {
 			System.out.println("couldn't initialize...");
@@ -253,12 +232,11 @@ public class Jdbc {
 	}
 
 
-	ResultSet fetchData(String loginInput) throws SQLException {
+	ResultSet fetchData(String reqId) throws SQLException {
 		// TODO Auto-generated method stub
-		selectQuery="select * from db where reqId = ? or mail = ?";
+		selectQuery="select * from db where reqId = ?";
 		selectStatement=connection.prepareStatement(selectQuery);
-		selectStatement.setString(1, loginInput);
-		selectStatement.setString(2, loginInput);
+		selectStatement.setString(1, reqId);
 		return selectStatement.executeQuery();
 	}
 	
@@ -281,18 +259,20 @@ public class Jdbc {
 	}
 
 
-	void setOtp(int userid, int otp) throws SQLException {
+	void logOtp(String userid, String otp) throws SQLException {
 		// TODO Auto-generated method stub
 		insertQuery ="insert into otp_table(user_id,otp) values (?,?)";
 		insertStatement=connection.prepareStatement(insertQuery);
-		insertStatement.setInt(1, userid);
-		insertStatement.setInt(2, otp);
+		insertStatement.setString(1, userid);
+		insertStatement.setString(2, otp);
+		
+		
 		insertStatement.executeUpdate();
 		System.out.println("otp generated succesfully");
 	}
 
 
-	String getOtp(int userid) {
+	String fetchOtp(String chkuserid) {
 		// TODO Auto-generated method stub
 		selectQuery = "SELECT otp, created_at FROM otp_table WHERE user_id = ?";
         deleteQuery = "DELETE FROM otp_table WHERE user_id = ?";
@@ -301,7 +281,7 @@ public class Jdbc {
     	try {
 			selectStatement = connection.prepareStatement(selectQuery);
 			deleteStatement = connection.prepareStatement(deleteQuery);
-	        selectStatement.setInt(1, userid);
+	        selectStatement.setString(1, chkuserid);
 
 	        resultset = selectStatement.executeQuery();
             if (resultset.next()) {
@@ -315,17 +295,17 @@ public class Jdbc {
 
                 // Check if the OTP is valid (created within the last 5 minutes)
                 if (timeDifferenceMinutes <= 5) {
-                    System.out.println("OTP for user_id " + userid + ": " + otp);
+                    System.out.println("OTP for user_id " + chkuserid + ": " + otp);
                     // Continue with further processing using the OTP as needed
                 } else if (!(timeDifferenceMinutes <= 5)) {
                     // If OTP is not valid, delete the entry from the table
-                    deleteStatement.setInt(1, userid);
+                    deleteStatement.setString(1, chkuserid);
                     deleteStatement.executeUpdate();
-                    System.out.println("OTP for user_id " + userid + " has expired and has been deleted.");
+                    System.out.println("OTP for user_id " + chkuserid + " has expired and has been deleted.");
                     otp="expired";
                 }
             } else if (!resultset.next()) {
-                System.out.println("No OTP found for user_id " + userid);
+                System.out.println("No OTP found for user_id " + chkuserid);
             }
             return otp;
 		} catch (SQLException e) {
@@ -466,15 +446,68 @@ public class Jdbc {
 	void addTransact(String trnscId, int sNo, Float amt, Float bal, String reqId) throws SQLException {
 		// TODO Auto-generated method stub
 		insertQuery="insert into master_wallet(trnscId,sNo,trnsc,bal,reqId) values (?,?,?,?,?)";
+		
 		insertStatement=connection.prepareStatement(insertQuery);
 		insertStatement.setString(1, trnscId);
 		insertStatement.setInt(2, sNo);
 		insertStatement.setFloat(3, amt);
 		insertStatement.setFloat(4, bal);
 		insertStatement.setString(5, reqId);
+		
 		insertStatement.executeUpdate();
-		System.out.println("added succesfully");
+		System.out.println("transaction added succesfully");
 	}
 
 
+	void logMessage(String chatId, String message, String reqId, int isClosed, String prevChatId) throws SQLException {
+		// TODO Auto-generated method stub
+		insertQuery="insert into master_chats(chatId,message,reqId,closed,pointer) values (?,?,?,?,?)";
+		
+		insertStatement=connection.prepareStatement(insertQuery);
+		insertStatement.setString(1, chatId);
+		insertStatement.setString(2, message);
+		insertStatement.setString(3, reqId);
+		insertStatement.setInt(4,isClosed);
+		insertStatement.setString(5,prevChatId);
+		
+		insertStatement.executeUpdate();
+		
+		if(prevChatId.equals("oooheadooo")) {
+			System.out.println("A neww chat thread staarted by "+ reqId);
+		} else {
+			System.out.println("message from "+ reqId +" logged to database");
+		}
+	}
+
+
+	ResultSet fetchMessage(String reqId) throws SQLException {
+		// TODO Auto-generated method stub
+		selectQuery="select * from master_chats where reqId = ?";
+		
+		selectStatement=connection.prepareStatement(selectQuery);
+		selectStatement.setString(1, reqId);
+		
+		System.out.println("fetched messages for "+ reqId);
+		
+		return selectStatement.executeQuery();
+	}
+
+
+	public boolean isDuplicateId(String Id, String tableName, String columnName) throws SQLException {
+		// TODO Auto-generated method stub
+		selectQuery = "SELECT "+columnName+" FROM "+tableName+" WHERE "+columnName+" = ?";
+		selectStatement = connection.prepareStatement(selectQuery);
+
+        selectStatement.setString(1, Id);
+        
+        resultset = selectStatement.executeQuery();
+        
+        boolean hasNext = resultset.next();
+        if(hasNext) {
+        	System.out.println("Duplicate Id");
+        }
+		return hasNext;
+	}
+	
+	
 }
